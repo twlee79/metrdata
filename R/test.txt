@@ -1,0 +1,112 @@
+metadata(tmp1)
+edit_metadata(tmp1, c("tmp1","a"), "<-", "10")
+edit_metadata(tmp1, c("tmp1","a"), "<-", NULL)
+
+local({
+  tmp1<-tibble::tibble(index=1:20)
+  metadata(tmp1)<-prepare_metrdatat("tmp1", list(a=1, b=2))
+
+})
+
+
+local({
+    preprocess_metadata(
+    list(a=1, b=2,
+      c = append_metadata(tibble(), "c", list(c=3)),
+      d=3,
+      e = append_metadata(tibble(), "e", list(c=5)))
+  )
+})
+
+
+local( {
+  # this pattern adds metadata of source objs using 'include_from'
+  # these are added flatly to the metadata
+  # this pattern is better suited for sibling metadata
+  tmp1<-function() {
+    .metrdata_name <- "tmp1"
+    .metrdata<-list("foo" = TRUE)
+
+    append_metadata(
+      tibble(index=1:10),
+      .metrdata_name, .metrdata)
+  }
+
+  tmp1a<-function() {
+    .metrdata_name <- "tmp1a"
+    .metrdata<-list("foo" = TRUE)
+
+    append_metadata(
+      tibble(index=10:50),
+      .metrdata_name, .metrdata)
+  }
+
+  tmp2<-function(input) {
+    .metrdata_name <- "tmp2"
+    .metrdata<-list("bar" = FALSE)
+    append_metadata(
+      mutate(
+        strip_metadata(input),
+        index_sq = index^2),
+      .metrdata_name, .metrdata, input)
+  }
+
+  tmp3<-function(input1, input2) {
+    .metrdata_name <- "tmp3"
+    .metrdata<-list("foobar" = 10)
+
+    append_metadata(
+      list(input1, input2),
+      .metrdata_name, .metrdata, list(input1, input2))
+  }
+
+  #tmp1() %>% tmp2() %>% get_metadata()
+  #cat_metadata(tmp1(), tmp2(tmp1()))
+  tmp3(tmp2(tmp1()), tmp1a()) %>% get_metadata()
+  #tmp2(tmp1a()) %>% get_metadata()
+})
+
+local( {
+  # this pattern adds metadata of source objs using by including
+  # them in metadata list of final obj
+  # these are added as children to the metadata
+  # this pattern is better suited for metadata of source objs
+
+  tmp1<-function() {
+    .metrdata_name <- "tmp1"
+    .metrdata<-list("foo" = TRUE)
+
+    append_metadata(
+      tibble(index=1:10),
+      .metrdata_name, .metrdata)
+  }
+
+  tmp1a<-function() {
+    .metrdata_name <- "tmp1a"
+    .metrdata<-list("foo" = TRUE)
+
+    append_metadata(
+      tibble(index=10:50),
+      .metrdata_name, .metrdata)
+  }
+
+  tmp2<-function(input) {
+    .metrdata_name <- "tmp2"
+    .metrdata<-list("bar" = FALSE, "input" = input)
+
+    append_metadata(
+      mutate(strip_metadata(input), input, index_sq = index^2),
+      .metrdata_name, .metrdata)
+  }
+
+  tmp3<-function(input1, input2) {
+    .metrdata_name <- "tmp3"
+    .metrdata<-list("foobar" = 10, input1 = input1, input2 = input2)
+
+    append_metadata(
+      list(input1, input2),
+      .metrdata_name, .metrdata)
+  }
+
+  tmp3(tmp2(tmp1()), tmp1a()) %>% get_metadata()
+})

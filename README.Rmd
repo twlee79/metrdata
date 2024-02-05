@@ -1,0 +1,138 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# metrdata
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of metrdata is to provide a simply interface for 
+associating arbitrary metadata with data in R. These metadata can, for example, 
+be used to describe the source of the data, any processing steps taken, and 
+parameters used to process the data.
+
+These metadata should be human readable so are saved alongside the data files
+in sidecar files in JSON format.
+
+Given that data files are likely to derive from other sources, functions
+to inherit metadata from other objects are provided.
+
+
+## Installation
+
+You can install the development version of metrdata like so:
+
+``` r
+library(devtools)
+install_github("twlee79/metrdata")
+```
+
+## Metadata storage within an R session
+
+Metadata are stored in an R session by assigning as a attribute for a data
+object. The metadata for an object are stored in the attribute named
+``r metrdata::get_metrdata_attrname()`` as an S3 class with the class name 
+``r metrdata::get_metrdata_classname()``.
+
+## Metadata persistent storage
+
+A goal of this package is to ensure that metadata of a data file are human
+readable. Therefore, the metadata are stored as sidecar files 
+(i.e. separate files) with the suffix ``r metrdata::get_metrdata_suffix()`` 
+alongside the data file in JSON format.
+
+
+## Example: Suggested metadata usage pattern
+
+Although metrdata allows the use of arbitrary metadata, a suggest pattern is
+to assign metadata under lists using top-level 'keys'. This allows metadata
+from multiple steps of processing to be better isolated under separate keys.
+In addition, this allows a user-friendly means of inherting metadata from
+previous processing steps.
+
+For example, consider this starting data with metadata applied:
+```{r}
+library(metrdata)
+cars_data<-set_metadata(cars, 
+  metrdata(`Original data source` = "cars dataset from R"))
+
+metadata(cars_data)
+```
+
+And these processing functions, which replace metadata with new metadata
+providing details on the processing and reference the source dataset:
+```{r}
+process_cars_speed<-function(dataset) {
+  dataset$speed<-dataset$speed*0.9
+  set_metadata(
+    dataset, replace = TRUE,
+    metrdata(
+      `Processing of speed` = list(
+        Note = "speed alteration applied",
+        Amount = "reduced by 10%"
+      ),
+      dataset
+      
+    )
+  )
+}
+
+process_cars_dist<-function(dataset, amount = 2) {
+  # set metadata for this processing function
+  .metadata_label <- "Processing of dist"
+  .metadata_list <- list(
+    Note = "dist alteration: multiplication applied",
+    Amount = amount
+  )
+  .metadata_source <- dataset 
+    # or list(dataset, ...) for >1 source
+  
+  result<-strip_metadata(dataset)
+    # alternative is to replace = TRUE in set_metadata() 
+  result$speed<-result$speed*2
+  
+  # return result dataset with added metadata
+  set_metadata(
+    result,
+    metrdata(
+      label =.metadata_label,
+      .metadata_list,
+      include = .metadata_source
+    )
+  )
+}
+```
+
+The result is a easily understood metadata object with each step of processing 
+outlined under a descriptive heading (the 'key'):
+```{r}
+derived_cars<-process_cars_speed(cars_data)
+metadata(derived_cars)
+
+derived_cars2<-process_cars_dist(derived_cars)
+metadata(derived_cars2)
+```
+
+Note the pattern for the second processing function `process_cars_dist()`,
+where the details of the metadata (label, metadata, sources) are recorded 
+at the top of function, and applied when the function returns. This pattern
+is useful for keeping the metadata description at the top of the function,
+where it may be easier to maintain.
+
+## History
+
+v0.1.0 
+  - 2024-02-05 
+  - Initial release
